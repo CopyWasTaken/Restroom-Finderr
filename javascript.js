@@ -1,65 +1,48 @@
 let map, restroomLayer, userMarker;
-let locationReady = false;
 
-// Initialize the map
+// Initialize map with default center
+map = L.map('map').setView([20, 0], 2);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+restroomLayer = L.layerGroup().addTo(map);
+
+// Get user location
 navigator.geolocation.getCurrentPosition(
   (pos) => {
-    let lat = pos.coords.latitude;
-    let lon = pos.coords.longitude;
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-    map = L.map('map').setView([lat, lon], 15);
+    // Center map on user
+    map.setView([lat, lon], 15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
-
+    // Show user marker
     userMarker = L.marker([lat, lon]).addTo(map)
       .bindPopup("📍 Your Location")
       .openPopup();
 
-    restroomLayer = L.layerGroup().addTo(map);
+    // Load restrooms automatically
+    loadRestrooms(lat, lon);
 
-    locationReady = true; // now button can work
   },
   (err) => {
-    alert("Could not get location. Map may not show correctly.");
-    map = L.map('map').setView([20, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
-    restroomLayer = L.layerGroup().addTo(map);
-
-    locationReady = true; // allow using map anyway
+    alert("Could not get location. Showing map default view.");
   },
   { enableHighAccuracy: true, timeout: 10000 }
 );
 
-// Find nearby restrooms
-function findRestrooms() {
-  if (!locationReady) {
-    alert("Please wait, locating you...");
-    return;
-  }
-
-  if (!userMarker) {
-    alert("User location not found. Using map center.");
-    userMarker = L.marker(map.getCenter()).addTo(map)
-      .bindPopup("📍 Approximate Location")
-      .openPopup();
-  }
-
-  // Clear old markers
+// Function to load restrooms near given coordinates
+function loadRestrooms(lat, lon) {
   restroomLayer.clearLayers();
 
-  let lat = userMarker.getLatLng().lat;
-  let lon = userMarker.getLatLng().lng;
-
-  let query = `
+  const query = `
     [out:json][timeout:25];
     node["amenity"="toilets"](around:2000,${lat},${lon});
     out;
   `;
-  let url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+  const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
 
   fetch(url)
     .then(res => res.json())
@@ -70,9 +53,9 @@ function findRestrooms() {
       }
 
       data.elements.forEach(place => {
-        let name = place.tags && place.tags.name ? place.tags.name : "🚻 Public Restroom";
-        let marker = L.marker([place.lat, place.lon]).addTo(restroomLayer);
-        let distance = map.distance([lat, lon], [place.lat, place.lon]).toFixed(0);
+        const name = place.tags && place.tags.name ? place.tags.name : "🚻 Public Restroom";
+        const marker = L.marker([place.lat, place.lon]).addTo(restroomLayer);
+        const distance = map.distance([lat, lon], [place.lat, place.lon]).toFixed(0);
         marker.bindPopup(`${name}<br>Distance: ${distance} m`);
       });
     })
