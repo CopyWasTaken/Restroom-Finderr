@@ -1,66 +1,95 @@
-let map, restroomLayer, userMarker;
+let map;
+let restroomLayer;
+let userMarker;
 
-// Initialize map with default center
-map = L.map('map').setView([20, 0], 2);
+map = L.map('map').setView([20,0],2);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
 }).addTo(map);
 
 restroomLayer = L.layerGroup().addTo(map);
 
-// Get user location
+function startSearch(){
+
+document.getElementById("status").innerText = "Getting your location..."
+
 navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    const lat = pos.coords.latitude;
-    const lon = pos.coords.longitude;
 
-    // Center map on user
-    map.setView([lat, lon], 15);
+(pos)=>{
 
-    // Show user marker
-    userMarker = L.marker([lat, lon]).addTo(map)
-      .bindPopup("📍 Your Location")
-      .openPopup();
+let lat = pos.coords.latitude
+let lon = pos.coords.longitude
 
-    // Load restrooms automatically
-    loadRestrooms(lat, lon);
+map.setView([lat,lon],15)
 
-  },
-  (err) => {
-    alert("Could not get location. Showing map default view.");
-  },
-  { enableHighAccuracy: true, timeout: 10000 }
-);
+if(userMarker){
+map.removeLayer(userMarker)
+}
 
-// Function to load restrooms near given coordinates
-function loadRestrooms(lat, lon) {
-  restroomLayer.clearLayers();
+userMarker = L.marker([lat,lon]).addTo(map)
+.bindPopup("📍 Your Location")
+.openPopup()
 
-  const query = `
-    [out:json][timeout:25];
-    node["amenity"="toilets"](around:2000,${lat},${lon});
-    out;
-  `;
-  const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+loadRestrooms(lat,lon)
 
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      if (!data.elements || data.elements.length === 0) {
-        alert("No restrooms found nearby.");
-        return;
-      }
+},
 
-      data.elements.forEach(place => {
-        const name = place.tags && place.tags.name ? place.tags.name : "🚻 Public Restroom";
-        const marker = L.marker([place.lat, place.lon]).addTo(restroomLayer);
-        const distance = map.distance([lat, lon], [place.lat, place.lon]).toFixed(0);
-        marker.bindPopup(`${name}<br>Distance: ${distance} m`);
-      });
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Error loading restrooms.");
-    });
+()=>{
+document.getElementById("status").innerText = "❌ Location access denied"
+},
+
+{enableHighAccuracy:true,timeout:10000}
+
+)
+
+}
+
+function loadRestrooms(lat,lon){
+
+document.getElementById("status").innerText = "Searching for nearby restrooms..."
+
+restroomLayer.clearLayers()
+
+let query = `
+[out:json][timeout:25];
+node["amenity"="toilets"](around:2000,${lat},${lon});
+out;
+`
+
+let url = "https://overpass.kumi.systems/api/interpreter?data=" + encodeURIComponent(query)
+
+fetch(url)
+.then(res=>res.json())
+.then(data=>{
+
+if(!data.elements || data.elements.length===0){
+
+document.getElementById("status").innerText = "No restrooms found nearby"
+
+return
+
+}
+
+document.getElementById("status").innerText = data.elements.length + " restrooms found"
+
+data.elements.forEach(place=>{
+
+let name = place.tags && place.tags.name ? place.tags.name : "🚻 Public Restroom"
+
+let marker = L.marker([place.lat,place.lon]).addTo(restroomLayer)
+
+let distance = map.distance([lat,lon],[place.lat,place.lon]).toFixed(0)
+
+marker.bindPopup(name + "<br>Distance: " + distance + " m")
+
+})
+
+})
+.catch(()=>{
+
+document.getElementById("status").innerText = "⚠️ Error loading restroom data"
+
+})
+
 }
