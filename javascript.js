@@ -53,7 +53,7 @@ restroomLayer.clearLayers()
 
 let query = `
 [out:json][timeout:25];
-node["amenity"="toilets"](around:2000,${lat},${lon});
+node["amenity"="toilets"](around:1000,${lat},${lon});
 out;
 `
 
