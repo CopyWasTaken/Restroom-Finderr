@@ -1,6 +1,7 @@
 let map, restroomLayer, userMarker;
+let locationReady = false;
 
-// Initialize the map with user location
+// Initialize the map
 navigator.geolocation.getCurrentPosition(
   (pos) => {
     let lat = pos.coords.latitude;
@@ -18,7 +19,8 @@ navigator.geolocation.getCurrentPosition(
 
     restroomLayer = L.layerGroup().addTo(map);
 
-  }, 
+    locationReady = true; // now button can work
+  },
   (err) => {
     alert("Could not get location. Map may not show correctly.");
     map = L.map('map').setView([20, 0], 2);
@@ -26,14 +28,24 @@ navigator.geolocation.getCurrentPosition(
       maxZoom: 19
     }).addTo(map);
     restroomLayer = L.layerGroup().addTo(map);
-  }
+
+    locationReady = true; // allow using map anyway
+  },
+  { enableHighAccuracy: true, timeout: 10000 }
 );
 
 // Find nearby restrooms
 function findRestrooms() {
-  if (!userMarker) {
-    alert("User location not found yet.");
+  if (!locationReady) {
+    alert("Please wait, locating you...");
     return;
+  }
+
+  if (!userMarker) {
+    alert("User location not found. Using map center.");
+    userMarker = L.marker(map.getCenter()).addTo(map)
+      .bindPopup("📍 Approximate Location")
+      .openPopup();
   }
 
   // Clear old markers
