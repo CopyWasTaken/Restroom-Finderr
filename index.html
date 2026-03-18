@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Restroom Finder</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body{
+font-family:Arial;
+margin:0;
+text-align:center;
+}
+
+h2{
+margin:10px;
+}
+
+#map{
+height:85vh;
+}
+
+button{
+padding:12px 20px;
+font-size:16px;
+background:#2e7d32;
+color:white;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🚻 Public Restroom Finder</h2>
+
+<button onclick="findRestrooms()">Find Restrooms Near Me</button>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+let map
+let userMarker
+
+navigator.geolocation.getCurrentPosition((pos)=>{
+
+let lat = pos.coords.latitude
+let lon = pos.coords.longitude
+
+map = L.map('map').setView([lat, lon], 15)
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map)
+
+userMarker = L.marker([lat, lon]).addTo(map)
+.bindPopup("📍 Your location")
+.openPopup()
+
+})
+
+function findRestrooms(){
+
+navigator.geolocation.getCurrentPosition((pos)=>{
+
+let lat = pos.coords.latitude
+let lon = pos.coords.longitude
+
+let query = `
+[out:json];
+node
+["amenity"="toilets"]
+(around:1200,${lat},${lon});
+out;
+`
+
+let url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query)
+
+fetch(url)
+.then(res=>res.json())
+.then(data=>{
+
+data.elements.forEach(place=>{
+
+let marker = L.marker([place.lat, place.lon]).addTo(map)
+
+marker.bindPopup("🚻 Public Restroom")
+
+})
+
+})
+
+})
+
+}
+
+</script>
+
+</body>
+</html>
